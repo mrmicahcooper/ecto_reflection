@@ -1,8 +1,5 @@
 defmodule EctoReflectionTest do
-  use ExUnit.Case
-  doctest EctoReflection
+  use ExUnit.Case, async: true
 
-  test "greets the world" do
-    assert EctoReflection.hello() == :world
-  end
+  import Ecto.Query
 end

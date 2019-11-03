@@ -7,6 +7,7 @@ defmodule EctoReflection.MixProject do
       version: "0.1.0",
       elixir: "~> 1.9",
       start_permanent: Mix.env() == :prod,
+      elixirc_paths: elixirc_paths(Mix.env()),
       deps: deps(),
       aliases: aliases()
     ]
@@ -18,6 +19,12 @@ defmodule EctoReflection.MixProject do
       extra_applications: [:logger]
     ]
   end
+
+  defp elixirc_paths(env) when env in [:test, :dev] do
+    ["lib", "test/support"]
+  end
+
+  defp elixirc_paths(_), do: ["lib"]
 
   defp deps do
     [
