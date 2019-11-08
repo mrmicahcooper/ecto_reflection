@@ -21,14 +21,41 @@ defmodule EctoReflection do
     query.from.source |> elem(1)
   end
 
-  @spec schema_fields(Ecto.Schema) :: list(:binary)
+  @spec schema_fields(Ecto.Schema) :: list(binary())
   @doc """
   Return all the fields of the passed in `Ecto.Schema`
-
-  The fields are returned as strings
   """
   def schema_fields(schema) do
-    schema.__schema__(:fields) |> Enum.map(&to_string/1)
+    fields(schema) |> Enum.map(&to_string/1)
+  end
+
+  @spec fields(Ecto.Schema) :: list(atom())
+  @doc """
+  Return all the fields of the passed in `Ecto.Schema`
+  """
+  def fields(schema) do
+    schema.__schema__(:fields)
+  end
+
+  @spec all_fields(Ecto.Schema) :: list(atom())
+  @doc """
+  Return all fields of the passed in `Ecto.Schema`
+  This includes virtual fields
+  """
+  def all_fields(schema) do
+    schema.__struct__
+    |> Map.keys()
+    |> Kernel.--(~w[__meta__ __struct__]a)
+    |> Kernel.--(schema.__schema__(:associations))
+    |> Kernel.--(schema.__schema__(:embeds))
+  end
+
+  @spec virtual_fields(Ecto.Schema) :: list(atom())
+  @doc """
+  Return all virtual fields of rhte passed in `Ecto.Schema`
+  """
+  def virtual_fields(schema) do
+    all_fields(schema) -- fields(schema)
   end
 
   @spec has_field?(Ecto.Schema, :binary) :: :boolean

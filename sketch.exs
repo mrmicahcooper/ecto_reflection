@@ -3,6 +3,13 @@
 schemas(:application | current_application())
 
 Schema
+fields()
+
+source_fields()
+virtual_fields
+
+reflection() - all the things()
+
 fields(schema) :: [atom()]
 field(schema, :field | "field") :: nil | :field
 field_type(schema, :field) :: nil | :type

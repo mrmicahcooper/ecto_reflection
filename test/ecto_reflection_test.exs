@@ -11,7 +11,25 @@ defmodule EctoReflectionTest do
 
   describe "schema_fields/1" do
     test "return string representations of a schema's fields" do
-      assert EctoReflection.schema_fields(User) == ~w[id username email age]
+      assert EctoReflection.schema_fields(User) == ~w[id username email age password_digest]
+    end
+  end
+
+  describe "all_fields/1" do
+    test "return all fields (virtual or not)" do
+      assert EctoReflection.all_fields(User) == ~w[age email id password password_digest username]a
+    end
+  end
+
+  describe "fields/1" do
+    test "return all the non-virtual fields in a schema" do
+      assert EctoReflection.fields(User) == ~w[id username email age password_digest]a
+    end
+  end
+
+  describe "virtual_fields/1" do
+    test "returns all virtual fields in a schema" do
+      assert EctoReflection.virtual_fields(User) == ~w[password]a
     end
   end
 
