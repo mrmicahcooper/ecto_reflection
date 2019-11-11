@@ -9,21 +9,49 @@ defmodule EctoReflectionTest do
     end
   end
 
-  describe "schema_fields/1" do
-    test "return string representations of a schema's fields" do
-      assert EctoReflection.schema_fields(User) == ~w[id username email age password_digest]
+  describe "attributes/1" do
+    test "return all attributes (virtual or not)" do
+      assert EctoReflection.attributes(User) == [
+        :address_users,
+        :addresses,
+        :age,
+        :email,
+        :id,
+        :inserted_at,
+        :password,
+        :password_digest,
+        :profile,
+        :projects,
+        :todos,
+        :updated_at,
+        :username
+      ]
     end
   end
 
-  describe "all_fields/1" do
-    test "return all fields (virtual or not)" do
-      assert EctoReflection.all_fields(User) == ~w[age email id password password_digest username]a
+  describe "attribute?/2" do
+    test "existing field returns true" do
+      assert EctoReflection.attribute?(User, "email") == true
+    end
+
+    test "non existing field returns true" do
+      assert EctoReflection.attribute?(User, "x") == false
     end
   end
 
-  describe "fields/1" do
+  describe "source_fields/1" do
     test "return all the non-virtual fields in a schema" do
-      assert EctoReflection.fields(User) == ~w[id username email age password_digest]a
+      assert EctoReflection.source_fields(User) == ~w[id username email age password_digest inserted_at updated_at]a
+    end
+  end
+
+  describe "source_field?/1" do
+    test "existing field that maps to a database returns true" do
+      assert EctoReflection.source_field?(User, "password_digest") == true
+    end
+
+    test "virtual field returns false" do
+      assert EctoReflection.source_field?(User, "password") == false
     end
   end
 
@@ -33,59 +61,54 @@ defmodule EctoReflectionTest do
     end
   end
 
-  describe "has_field?/2" do
+  describe "field?/2" do
     test "existing field returns true" do
-      assert EctoReflection.has_field?(User, "email") == true
+      assert EctoReflection.field?(User, "email") == true
     end
 
     test "non existing field returns true" do
-      assert EctoReflection.has_field?(User, "x") == false
+      assert EctoReflection.field?(User, "projects") == false
+      assert EctoReflection.field?(User, "z") == false
     end
   end
 
-  describe "field/2" do
-    test "returns field if it exists in the schema" do
-      assert EctoReflection.field(User, "username") == :username
+  describe "association?/2" do
+    test "existing assoc returns true" do
+      assert EctoReflection.association?(User, "projects") == true
     end
 
-    test "returns nil if the field doesn't exist" do
-      assert EctoReflection.field(User, "noop") == nil
+    test "existing assoc returns true with atom" do
+      assert EctoReflection.association?(User, :projects) == true
     end
 
-    test "returns the field with a passed in atom" do
-      assert EctoReflection.field(User, :username) == :username
-    end
-  end
-
-  describe "has_assoc?/2" do
-    test "existing assoc returns true", _ do
-      assert EctoReflection.has_assoc?(User, "projects") == true
-    end
-
-    test "existing assoc returns true with atom", _ do
-      assert EctoReflection.has_assoc?(User, :projects) == true
-    end
-
-    test "non existing assoc returns false", _ do
-      assert EctoReflection.has_assoc?(User, "bazes") == false
+    test "non existing assoc returns false" do
+      assert EctoReflection.association?(User, "bazes") == false
     end
   end
 
-  describe "assoc_schema/2" do
-    test "returns the associated schema if present" do
-      assert EctoReflection.assoc_schema(User, "projects") == Project
+  describe "type/2" do
+    test "returns the data type for a field" do
+      assert EctoReflection.type(User, "email") == {:field, :string}
     end
 
-    test "getting the schema with an atom" do
-      assert EctoReflection.assoc_schema(User, :projects) == Project
+    test "returns the data type for a virtual field" do
+      assert EctoReflection.type(User, "password") == {:field, {:virtual, :string}}
     end
 
-    test "returns the associated schema from a `through` if present" do
-      assert EctoReflection.assoc_schema(User, "todos") == Todo
+    test "returns the data type for a has_many association" do
+      assert EctoReflection.type(User, "projects") == {:has_many, Project}
     end
 
-    test "returns nil associated schema if absent" do
-      assert EctoReflection.assoc_schema(User, "bazes") == nil
+    test "returns the data type for a has_many_through association" do
+      assert EctoReflection.type(User, "todos") == {:has_many_through, [:projects, :todos], Todo}
+    end
+
+    test "returns the data type for a belongs_to" do
+      assert EctoReflection.type(Project, "user") == {:belongs_to, User}
+    end
+
+    test "returns nil if attribute doesnt exist" do
+      assert EctoReflection.type(User, "foobar") == nil
     end
   end
 

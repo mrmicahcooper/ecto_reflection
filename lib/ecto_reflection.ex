@@ -1,119 +1,169 @@
 defmodule EctoReflection do
+  import Enum, only: [map: 2]
+
   @moduledoc """
   Provides some conveniences to work with Queries and Schemas
   """
 
+  @spec schemas(atom()) :: list(module())
+  @doc """
+  Return a list of all modules that `use` `Ecto.Schema` in the application.
+  This is determined by checking if the `__schema__` function is defined on that module
+  """
   def schemas(application) do
     {:ok, modules} = :application.get_key(application, :modules)
     for module <- modules, defines_schema?(module), do: module
   end
 
-  defp defines_schema?(item) do
-    Code.ensure_loaded(item)
-    function_exported?(item, :__schema__, 1)
+  defp defines_schema?(module) do
+    Code.ensure_loaded(module)
+    function_exported?(module, :__schema__, 1)
   end
 
-  @spec source_schema(Ecto.Query) :: Ecto.Schema
-  @doc """
-  Find the source of an `Ecto.Query`
-  """
+  def attributes(module) do
+    module.__struct__
+    |> Map.keys()
+    |> Kernel.--(~w[__meta__ __struct__]a)
+  end
+
+  def attributes(module, :binary) do
+    module
+    |> attributes()
+    |> map(&to_string/1)
+  end
+
+  def attribute?(module, key) do
+    to_string(key) in (attributes(module, :binary))
+  end
+
+  def fields(module) do
+    module.__struct__
+    |> Map.keys()
+    |> Kernel.--(~w[__meta__ __struct__]a)
+    |> Kernel.--(module.__schema__(:associations))
+    |> Kernel.--(module.__schema__(:embeds))
+  end
+
+  def fields(module, :binary) do
+    module
+    |> fields()
+    |> map(&to_string/1)
+  end
+
+  def field?(module, key) do
+    to_string(key) in fields(module, :binary)
+  end
+
+  def type(schema, key) when is_binary(key) do
+    if attribute?(schema, key) do
+      type(schema, String.to_atom(key))
+    end
+  end
+
+  def type(schema, key) when is_atom(key) do
+    with(
+      nil <- schema.__schema__(:type, key),
+      nil <- schema.__schema__(:association, key),
+      nil <- schema.__schema__(:embed, key),
+      key when not is_nil(key) <- schema.__changeset__ |> Map.get(key)
+    ) do
+      {:virtual, key}
+    end
+    |> data_type(schema)
+  end
+
+  defp data_type(%Ecto.Association.Has{}=assoc, _) do
+    assoc_type = "has_#{assoc.cardinality}" |> String.to_atom
+    {assoc_type, assoc.related}
+  end
+
+  defp data_type(%Ecto.Association.HasThrough{}=assoc, schema) do
+    assoc_type = "has_#{assoc.cardinality}_through" |> String.to_atom
+    {assoc_type, assoc.through, assoc_schema(schema, assoc.field)}
+  end
+
+  defp data_type(%Ecto.Association.BelongsTo{}=assoc, schema) do
+    {:belongs_to, assoc_schema(schema, assoc.field)}
+  end
+
+  defp data_type(false, _), do: nil
+  defp data_type(type, _), do: {:field, type}
+
+  def source_fields(module) do
+    module.__schema__(:fields)
+  end
+
+  def source_fields(module, :binary) do
+    module
+    |> source_fields()
+    |> map(&to_string/1)
+  end
+
+  def source_field?(module, key) do
+    to_string(key) in source_fields(module, :binary)
+  end
+
+  def virtual_fields(module) do
+    fields(module) -- source_fields(module)
+  end
+
+  def virtual_fields(module, :binary) do
+    module
+    |> virtual_fields()
+    |> map(&to_string/1)
+  end
+
+  def virtual_field?(module, key) do
+    to_string(key) in virtual_fields(module, :binary)
+  end
+
+  def associations(module) do
+    module.__schema__(:associations)
+  end
+
+  def associations(module, :binary) do
+    module
+    |> associations()
+    |> map(&to_string/1)
+  end
+
+  def association?(module, key) do
+    to_string(key) in associations(module, :binary)
+  end
+
+  def embeds(module) do
+    module.__schema__(:embeds)
+  end
+
+  def embeds(module, :binary) do
+    module
+    |> embeds()
+    |> map(&to_string/1)
+  end
+
+  def embed?(module, key) do
+    to_string(key) in embeds(module, :binary)
+  end
+
+  def relationships(module) do
+    associations(module) ++ embeds(module)
+  end
+
+  def relationships(module, :binary) do
+    module
+    |> relationships()
+    |> map(&to_string/1)
+  end
+
+  def relationship?(module, key) do
+    to_string(key) in relationships(module, :binary)
+  end
+
   def source_schema(query) do
     query.from.source |> elem(1)
   end
 
-  @spec schema_fields(Ecto.Schema) :: list(binary())
-  @doc """
-  Return all the fields of the passed in `Ecto.Schema`
-  """
-  def schema_fields(schema) do
-    fields(schema) |> Enum.map(&to_string/1)
-  end
-
-  @spec fields(Ecto.Schema) :: list(atom())
-  @doc """
-  Return all the fields of the passed in `Ecto.Schema`
-  """
-  def fields(schema) do
-    schema.__schema__(:fields)
-  end
-
-  @spec all_fields(Ecto.Schema) :: list(atom())
-  @doc """
-  Return all fields of the passed in `Ecto.Schema`
-  This includes virtual fields
-  """
-  def all_fields(schema) do
-    schema.__struct__
-    |> Map.keys()
-    |> Kernel.--(~w[__meta__ __struct__]a)
-    |> Kernel.--(schema.__schema__(:associations))
-    |> Kernel.--(schema.__schema__(:embeds))
-  end
-
-  @spec virtual_fields(Ecto.Schema) :: list(atom())
-  @doc """
-  Return all virtual fields of rhte passed in `Ecto.Schema`
-  """
-  def virtual_fields(schema) do
-    all_fields(schema) -- fields(schema)
-  end
-
-  @spec has_field?(Ecto.Schema, :binary) :: :boolean
-  @doc """
-  Check if an `Ecto.Schema` has the passed in field
-  """
-  def has_field?(schema, field_name) when is_binary(field_name) do
-    field_name in schema_fields(schema)
-  end
-
-  @spec field(Ecto.Schema, binary() | atom()) :: :atom | nil
-  @doc """
-  Get the `:atom` representation of a field if it exists in the passed in `Ecto.Schema`
-  """
-  def field(schema, field_name) when is_binary(field_name) do
-    if has_field?(schema, field_name), do: String.to_atom(field_name)
-  end
-
-  def field(schema, field_name) when is_atom(field_name) do
-    if field_name in schema.__schema__(:fields), do: field_name
-  end
-
-  @spec has_assoc?(Ecto.Schema, binary() | atom()) :: :boolean
-  @doc """
-  Check if an `Ecto.Schema` has the passed in association
-  """
-  def has_assoc?(schema, assoc_name) when is_binary(assoc_name) do
-    list =
-      schema.__schema__(:associations)
-      |> Enum.map(&to_string/1)
-
-    assoc_name in list
-  end
-
-  def has_assoc?(schema, assoc_name) when is_atom(assoc_name) do
-    assoc_name in schema.__schema__(:associations)
-  end
-
-  @spec assoc_schema(Ecto.Schema, :binary) :: Ecto.Schema
-  @doc """
-  Return an associated schema
-  """
-  def assoc_schema(schema, assoc_name) when is_binary(assoc_name) do
-    if has_assoc?(schema, assoc_name) do
-      assoc = String.to_atom(assoc_name)
-
-      case schema.__schema__(:association, assoc) do
-        %{related: related} ->
-          related
-
-        %{through: [through, child_assoc]} ->
-          through_schema = assoc_schema(schema, through)
-          assoc_schema(through_schema, child_assoc)
-      end
-    end
-  end
-
-  def assoc_schema(schema, assoc) when is_atom(assoc) do
+  defp assoc_schema(schema, assoc) when is_atom(assoc) do
     case schema.__schema__(:association, assoc) do
       %{related: related} ->
         related

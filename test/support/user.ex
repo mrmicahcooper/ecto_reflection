@@ -12,5 +12,7 @@ defmodule User do
     has_many(:addresses, through: [:address_users, :address])
     has_many(:projects, Project)
     has_many(:todos, through: [:projects, :todos])
+
+    timestamps()
   end
 end

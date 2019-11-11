@@ -29,3 +29,41 @@ association(schema, :assoc_name | "assoc_name") :: {schema, cardinality}
 Query
 
 source_schema
+
+.attributes(schema, as: :binary) - everthing from the struct (minus private stuff)
+.attributes(schema) - everthing from the struct (minus private stuff)
+.attribute?(schema, "attribute" | :attribute)
+~.attribute(schema, "attribute" | :attribute)
+
+.source_fields - all non virtual fields
+.source_field?()
+.source_field()
+
+.virtual_fields - all virtual fields
+.virtual_field?()
+.virtual_field()
+
+.fields - virtual + non virtual fields
+.field?
+.field()
+
+.associations - all associations
+.association?()
+.association()
+
+.embeds - all embeds
+.embed?()
+.embed()
+
+.relationships() - all assocations + all embeds
+.relationship?()
+.relationship()
+
+
+.type %EctoReflection.Attribute{
+  name: "",
+  source: nil or field source,
+  type: "has_many", "belongs_to", "map"
+  virtual: :boolean,
+  related: module (User, etc...)
+}
