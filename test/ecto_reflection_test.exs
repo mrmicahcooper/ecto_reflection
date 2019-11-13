@@ -12,7 +12,6 @@ defmodule EctoReflectionTest do
   describe "attributes/1" do
     test "return all attributes (virtual or not)" do
       assert EctoReflection.attributes(User) == [
-        :address_users,
         :addresses,
         :age,
         :email,
@@ -92,11 +91,16 @@ defmodule EctoReflectionTest do
     end
 
     test "returns the data type for a virtual field" do
-      assert EctoReflection.type(User, "password") == {:field, {:virtual, :string}}
+      assert EctoReflection.type(User, "password") == {:field, :string, :virtual}
     end
 
     test "returns the data type for a has_many association" do
       assert EctoReflection.type(User, "projects") == {:has_many, Project}
+    end
+
+    test "returns the data type for a many_to_many association" do
+      assert EctoReflection.type(User, "addresses") == {:many_to_many, AddressUser, Address}
+
     end
 
     test "returns the data type for a has_many_through association" do

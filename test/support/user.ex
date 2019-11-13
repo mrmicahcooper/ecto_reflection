@@ -8,8 +8,7 @@ defmodule User do
     field(:password, :string, virtual: true)
     field(:password_digest, :string)
     has_one(:profile, Profile)
-    has_many(:address_users, AddressUser)
-    has_many(:addresses, through: [:address_users, :address])
+    many_to_many(:addresses, Address, join_through:  AddressUser)
     has_many(:projects, Project)
     has_many(:todos, through: [:projects, :todos])
 

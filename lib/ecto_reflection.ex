@@ -65,9 +65,9 @@ defmodule EctoReflection do
       nil <- schema.__schema__(:type, key),
       nil <- schema.__schema__(:association, key),
       nil <- schema.__schema__(:embed, key),
-      key when not is_nil(key) <- schema.__changeset__ |> Map.get(key)
+      type when not is_nil(type) <- schema.__changeset__ |> Map.get(key)
     ) do
-      {:virtual, key}
+      {:virtual, type}
     end
     |> data_type(schema)
   end
@@ -86,7 +86,12 @@ defmodule EctoReflection do
     {:belongs_to, assoc_schema(schema, assoc.field)}
   end
 
+  defp data_type(%Ecto.Association.ManyToMany{}=assoc, schema) do
+    {:many_to_many, assoc.join_through, assoc_schema(schema, assoc.field)}
+  end
+
   defp data_type(false, _), do: nil
+  defp data_type({:virtual, type}, _), do: {:field, type, :virtual}
   defp data_type(type, _), do: {:field, type}
 
   def source_fields(module) do
