@@ -55,6 +55,12 @@ defmodule EctoReflection do
     to_string(key) in fields(module, :binary)
   end
 
+  def types(module) do
+    module
+    |> attributes()
+    |> Enum.into(%{}, fn(key) -> {key, type(module, key)} end)
+  end
+
   @spec type(Ecto.Schema, atom() | binary()) :: {atom(), atom() | module()} | {atom(), module(), module() | [atom()] }
   def type(module, key) when is_binary(key) do
     if attribute?(module, key) do

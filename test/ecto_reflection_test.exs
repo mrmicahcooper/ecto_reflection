@@ -29,11 +29,11 @@ defmodule EctoReflectionTest do
   end
 
   describe "attribute?/2" do
-    test "existing field returns true" do
+    test "existing attribute on the struct returns true" do
       assert EctoReflection.attribute?(User, "email") == true
     end
 
-    test "non existing field returns true" do
+    test "non existing attribute on the struct returns false" do
       assert EctoReflection.attribute?(User, "x") == false
     end
   end
@@ -112,6 +112,25 @@ defmodule EctoReflectionTest do
 
     test "returns nil if attribute doesnt exist" do
       assert EctoReflection.type(User, "foobar") == nil
+    end
+  end
+
+  describe "types/1" do
+    test "returns a map of all attributes and their types for the schema" do
+      assert EctoReflection.types(User) == %{
+        age: {:field, :integer},
+        email: {:field, :string},
+        addresses: {:many_to_many, Address, AddressUser},
+        id: {:field, :id},
+        inserted_at: {:field, :naive_datetime},
+        password: {:virtual_field, :string},
+        password_digest: {:field, :string},
+        profile: {:has_one, Profile},
+        projects: {:has_many, Project},
+        todos: {:has_many_through, Todo, [:projects, :todos]},
+        updated_at: {:field, :naive_datetime},
+        username: {:field, :string}
+      }
     end
   end
 
