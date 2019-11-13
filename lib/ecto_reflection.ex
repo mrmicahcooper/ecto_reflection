@@ -15,11 +15,6 @@ defmodule EctoReflection do
     for module <- modules, defines_schema?(module), do: module
   end
 
-  defp defines_schema?(module) do
-    Code.ensure_loaded(module)
-    function_exported?(module, :__schema__, 1)
-  end
-
   def attributes(module) do
     module.__struct__
     |> Map.keys()
@@ -71,28 +66,6 @@ defmodule EctoReflection do
     end
     |> data_type(schema)
   end
-
-  defp data_type(%Ecto.Association.Has{}=assoc, _) do
-    assoc_type = "has_#{assoc.cardinality}" |> String.to_atom
-    {assoc_type, assoc.related}
-  end
-
-  defp data_type(%Ecto.Association.HasThrough{}=assoc, schema) do
-    assoc_type = "has_#{assoc.cardinality}_through" |> String.to_atom
-    {assoc_type, assoc.through, assoc_schema(schema, assoc.field)}
-  end
-
-  defp data_type(%Ecto.Association.BelongsTo{}=assoc, schema) do
-    {:belongs_to, assoc_schema(schema, assoc.field)}
-  end
-
-  defp data_type(%Ecto.Association.ManyToMany{}=assoc, schema) do
-    {:many_to_many, assoc.join_through, assoc_schema(schema, assoc.field)}
-  end
-
-  defp data_type(false, _), do: nil
-  defp data_type({:virtual, type}, _), do: {:field, type, :virtual}
-  defp data_type(type, _), do: {:field, type}
 
   def source_fields(module) do
     module.__schema__(:fields)
@@ -168,6 +141,11 @@ defmodule EctoReflection do
     query.from.source |> elem(1)
   end
 
+  defp defines_schema?(module) do
+    Code.ensure_loaded(module)
+    function_exported?(module, :__schema__, 1)
+  end
+
   defp assoc_schema(schema, assoc) when is_atom(assoc) do
     case schema.__schema__(:association, assoc) do
       %{related: related} ->
@@ -178,5 +156,27 @@ defmodule EctoReflection do
         assoc_schema(through_schema, child_assoc)
     end
   end
+
+  defp data_type(%Ecto.Association.Has{}=assoc, _) do
+    assoc_type = "has_#{assoc.cardinality}" |> String.to_atom
+    {assoc_type, assoc.related}
+  end
+
+  defp data_type(%Ecto.Association.HasThrough{}=assoc, schema) do
+    assoc_type = "has_#{assoc.cardinality}_through" |> String.to_atom
+    {assoc_type, assoc_schema(schema, assoc.field), assoc.through }
+  end
+
+  defp data_type(%Ecto.Association.BelongsTo{}=assoc, schema) do
+    {:belongs_to, assoc_schema(schema, assoc.field)}
+  end
+
+  defp data_type(%Ecto.Association.ManyToMany{}=assoc, schema) do
+    {:many_to_many, assoc_schema(schema, assoc.field), assoc.join_through, }
+  end
+
+  defp data_type(false, _), do: nil
+  defp data_type({:virtual, type}, _), do: {:virtual_field, type}
+  defp data_type(type, _), do: {:field, type}
 
 end

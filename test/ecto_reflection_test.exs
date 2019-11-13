@@ -91,7 +91,7 @@ defmodule EctoReflectionTest do
     end
 
     test "returns the data type for a virtual field" do
-      assert EctoReflection.type(User, "password") == {:field, :string, :virtual}
+      assert EctoReflection.type(User, "password") == {:virtual_field, :string}
     end
 
     test "returns the data type for a has_many association" do
@@ -99,12 +99,11 @@ defmodule EctoReflectionTest do
     end
 
     test "returns the data type for a many_to_many association" do
-      assert EctoReflection.type(User, "addresses") == {:many_to_many, AddressUser, Address}
-
+      assert EctoReflection.type(User, "addresses") == {:many_to_many, Address, AddressUser}
     end
 
     test "returns the data type for a has_many_through association" do
-      assert EctoReflection.type(User, "todos") == {:has_many_through, [:projects, :todos], Todo}
+      assert EctoReflection.type(User, "todos") == {:has_many_through, Todo, [:projects, :todos]}
     end
 
     test "returns the data type for a belongs_to" do
@@ -119,7 +118,6 @@ defmodule EctoReflectionTest do
   describe "source_schema/1" do
     test "returns the source schema from a query" do
       query = from(user in User)
-
       assert EctoReflection.source_schema(query) == User
     end
   end
