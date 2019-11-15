@@ -7,7 +7,8 @@ defmodule EctoReflection do
 
   @spec schemas(atom()) :: list(module())
   @doc """
-  Return a list of all modules that `use` `Ecto.Schema` in the application.
+  Return a list of all modules that use `Ecto.Schema` in the application.
+
   This is determined by checking if the `__schema__` function is defined on that module
   """
   def schemas(application) do
@@ -16,6 +17,32 @@ defmodule EctoReflection do
   end
 
   @spec attributes(Ecto.Schema) :: list(atom())
+  @doc """
+  Return a list of attributes for an `Ecto.Schema`.
+
+  If we have the following `Ecto.Schema`
+
+  ```
+  defmodule Foo do
+    use Ecto.Schema
+
+    schema "foos" do
+      field :bars
+      field :bazes
+
+      timestamps()
+    end
+  end
+  ```
+
+  We can do:
+
+  ```
+  iex> EctoReflection.attributes(Foo)
+  ~w[bars bazes id inserted_at password updated_at]a
+  ```
+
+  """
   def attributes(module) do
     module.__struct__
     |> Map.keys()
@@ -23,6 +50,14 @@ defmodule EctoReflection do
   end
 
   @spec attributes(Ecto.Schema, :binary) :: list(binary())
+  @doc """
+  Return a list of attributes as `binary()` for an `Ecto.Schema`
+
+  ```
+  iex> EctoReflection.attributes(Foo, :binary)
+  ~w[bars bazes id inserted_at password updated_at]
+  ```
+  """
   def attributes(module, :binary) do
     module
     |> attributes()
@@ -30,11 +65,40 @@ defmodule EctoReflection do
   end
 
   @spec attribute?(Ecto.Schema, atom() | binary() ):: boolean()
+  @doc """
+  Check if an attribute exists on an `Ecto.Schema`.
+
+  ```
+  iex> EctoReflection.attribute?(Foo, :bars)
+  true
+
+  iex> EctoReflection.attribute?(Foo, :non_attribute)
+  false
+  ```
+
+  You can also safely use a binary to check:
+
+  ```
+  iex> EctoReflection.attribute?(Foo, "bars")
+  true
+
+  iex> EctoReflection.attribute?(Foo, "non_attribute")
+  false
+  ```
+  """
   def attribute?(module, key) do
     to_string(key) in (attributes(module, :binary))
   end
 
   @spec fields(Ecto.Schema) :: list(atom())
+  @doc """
+  Return a list of fields (virtual or non virtual) defined in an `Ecto.Schema`
+
+  ```
+  iex> EctoReflection.fields(Foo)
+  ~w[bars bazes id inserted_at password updated_at]a
+  ```
+  """
   def fields(module) do
     module.__struct__
     |> Map.keys()
@@ -44,6 +108,14 @@ defmodule EctoReflection do
   end
 
   @spec fields(Ecto.Schema, :binary) :: list(binary())
+  @doc """
+  Return a list of fields as binaries (virtual or non virtual) defined in an `Ecto.Schema`
+
+  ```
+  iex> EctoReflection.fields(Foo)
+  ~w[bars bazes id inserted_at password updated_at]a
+  ```
+  """
   def fields(module, :binary) do
     module
     |> fields()
@@ -51,10 +123,77 @@ defmodule EctoReflection do
   end
 
   @spec field?(Ecto.Schema, atom() | binary()) :: boolean()
+  @doc """
+  Check if a field is defined on a schema
+
+  ```
+  iex> EctoReflection.field?(Foo, :bars)
+  true
+
+  iex> EctoReflection.field?(Foo, :non_field)
+  false
+  ```
+
+  You can also safely pass in a binary
+
+  ```
+  iex> EctoReflection.field?(Foo, "bars")
+  true
+
+  iex> EctoReflection.field?(Foo, "non_field")
+  false
+  ```
+  """
   def field?(module, key) do
     to_string(key) in fields(module, :binary)
   end
 
+  @spec types(Ecto.Schema) :: map
+  @doc """
+  Return a map of the schema and its types as a convenient shorthand
+
+  Say we have the following User `Ecto.Schema`
+
+  ```
+  defmodule User do
+    use Ecto.Schema
+
+    schema "users" do
+      field(:username, :string)
+      field(:email, :string)
+      field(:age, :integer)
+      field(:password, :string, virtual: true)
+      field(:password_digest, :string)
+      has_one(:profile, Profile)
+      many_to_many(:addresses, Address, join_through:  AddressUser)
+      has_many(:projects, Project)
+      has_many(:todos, through: [:projects, :todos])
+
+      timestamps()
+    end
+  end
+  ```
+
+  Its types would look like this:
+
+  ```
+  iex> EctoReflection.types(User)
+  %{
+    addresses: {:many_to_many, Address, AddressUser},
+    age: {:field, :integer},
+    email: {:field, :string},
+    id: {:field, :id},
+    inserted_at: {:field, :naive_datetime},
+    password: {:virtual_field, :string},
+    password_digest: {:field, :string},
+    profile: {:has_one, Profile},
+    projects: {:has_many, Project},
+    todos: {:has_many_through, Todo, [:projects, :todos]},
+    updated_at: {:field, :naive_datetime},
+    username: {:field, :string}
+  }
+  ```
+  """
   def types(module) do
     module
     |> attributes()
@@ -62,12 +201,29 @@ defmodule EctoReflection do
   end
 
   @spec type(Ecto.Schema, atom() | binary()) :: {atom(), atom() | module()} | {atom(), module(), module() | [atom()] }
+  @doc """
+  Return the type for a `Ecto.Schema`'s attribute
+
+  ```
+  iex> EctoReflection.type(User, "projects")
+  {:has_many, Project}
+  ```
+  """
   def type(module, key) when is_binary(key) do
     if attribute?(module, key) do
       type(module, String.to_atom(key))
     end
   end
 
+  @doc """
+  Return the type for a `Ecto.Schema`'s attribute
+
+  Accepts an atom or a binary for the attribute
+  ```
+  iex> EctoReflection.type(User, :projects)
+  {:has_many, Project}
+  ```
+  """
   def type(schema, key) when is_atom(key) do
     with(
       nil <- schema.__schema__(:type, key),
@@ -81,11 +237,30 @@ defmodule EctoReflection do
   end
 
   @spec source_fields(Ecto.Schema) :: list(atom())
+  @doc """
+  Return a list of fields that to the database.
+
+  In other words, all non-virtual fields
+  ```
+  iex> EctoReflection.source_fields(Foo)
+  ~w[id bars bazes inserted_at updated_at]a
+  ```
+  """
   def source_fields(module) do
     module.__schema__(:fields)
   end
 
   @spec source_fields(Ecto.Schema, :binary) :: list(binary())
+  @spec source_fields(Ecto.Schema) :: list(atom())
+  @doc """
+  Return a list of fields that to the database as binaries.
+
+  In other words, all non-virtual fields
+  ```
+  iex> EctoReflection.source_fields(Foo, :binary)
+  ~w[id bars bazes inserted_at updated_at]
+  ```
+  """
   def source_fields(module, :binary) do
     module
     |> source_fields()
@@ -93,16 +268,53 @@ defmodule EctoReflection do
   end
 
   @spec source_field?(Ecto.Schema, atom() | binary()) :: boolean()
+  @doc """
+  Check if a non-virtual field is defined on a schema
+
+  ```
+  iex> EctoReflection.source_field?(Foo, :bars)
+  true
+
+  iex> EctoReflection.source_field?(Foo, :password)
+  false
+  ```
+
+  Also safe with binaries
+
+  ```
+  iex> EctoReflection.source_field?(Foo, "bars")
+  true
+
+  iex> EctoReflection.source_field?(Foo, "password")
+  false
+  ```
+  """
   def source_field?(module, key) do
     to_string(key) in source_fields(module, :binary)
   end
 
   @spec virtual_fields(Ecto.Schema) :: list(atom())
+  @doc """
+  Return a list of virtual fields defined on a schema
+
+  ```
+  iex> EctoReflection.virtual_fields(Foo)
+  ~w[password]a
+  ```
+  """
   def virtual_fields(module) do
     fields(module) -- source_fields(module)
   end
 
   @spec virtual_fields(Ecto.Schema, :binary) :: list(binary())
+  @doc """
+  Return a list of virtual fields defined on a schema as binaries
+
+  ```
+  iex> EctoReflection.virtual_fields(Foo, :binary)
+  ~w[password]
+  ```
+  """
   def virtual_fields(module, :binary) do
     module
     |> virtual_fields()
@@ -110,16 +322,53 @@ defmodule EctoReflection do
   end
 
   @spec virtual_field?(Ecto.Schema, atom() | binary()) :: boolean()
+  @doc """
+  Check if the virtual field exists on the `Ecto.Schema`
+
+  ```
+  iex> EctoReflection.virtual_field?(Foo, :password)
+  true
+
+  iex> EctoReflection.virtual_field?(Foo, :bars)
+  false
+  ```
+
+  Also works with binaries
+
+  ```
+  iex> EctoReflection.virtual_field?(Foo, "password")
+  true
+
+  iex> EctoReflection.virtual_field?(Foo, "bars")
+  false
+  ```
+  """
   def virtual_field?(module, key) do
     to_string(key) in virtual_fields(module, :binary)
   end
 
   @spec associations(Ecto.Schema) :: list(atom())
+  @doc """
+  List all associations defined in a `Ecto.Schema`
+
+  ```
+  iex> EctoReflection.associations(User)
+  ~w[profile addresses projects todos]a
+  ```
+  """
   def associations(module) do
     module.__schema__(:associations)
   end
 
   @spec associations(Ecto.Schema, :binary) :: list(binary())
+  @doc """
+  List all associations defined in a `Ecto.Schema` as binaries
+
+  ```
+  iex> EctoReflection.associations(User, :binary)
+  ~w[profile addresses projects todos]
+  ```
+  """
   def associations(module, :binary) do
     module
     |> associations()
@@ -127,6 +376,27 @@ defmodule EctoReflection do
   end
 
   @spec association?(Ecto.Schema, atom() | binary()) :: boolean()
+  @doc """
+  Check if the association is defined on the `Ecto.Schema`
+
+  ```
+  iex> EctoReflection.association?(User, :projects)
+  true
+
+  iex> EctoReflection.association?(User, :unassociated)
+  false
+  ```
+
+  Also safe with binaries
+
+  ```
+  iex> EctoReflection.association?(User, "projects")
+  true
+
+  iex> EctoReflection.association?(User, "unassociated")
+  false
+  ```
+  """
   def association?(module, key) do
     to_string(key) in associations(module, :binary)
   end

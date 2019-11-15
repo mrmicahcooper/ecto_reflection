@@ -5,7 +5,7 @@ defmodule EctoReflectionTest do
 
   describe "schemas/1" do
     test "returns all the schemas in an application" do
-      assert EctoReflection.schemas(:ecto_reflection) == [Address, AddressUser, Profile, Project, Todo, User]
+      assert EctoReflection.schemas(:ecto_reflection) == [Address, AddressUser, Foo, Profile, Project, Todo, User]
     end
   end
 
