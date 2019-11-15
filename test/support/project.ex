@@ -1,4 +1,5 @@
 defmodule Project do
+  @moduledoc false
   use Ecto.Schema
 
   schema "projects" do

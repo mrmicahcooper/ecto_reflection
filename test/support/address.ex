@@ -1,5 +1,7 @@
 defmodule Address do
+  @moduledoc false
   use Ecto.Schema
+
 
   schema "address" do
     field :address1, :string

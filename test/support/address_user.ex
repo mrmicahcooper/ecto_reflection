@@ -1,4 +1,5 @@
 defmodule AddressUser do
+  @moduledoc false
   use Ecto.Schema
 
   schema "address_users" do

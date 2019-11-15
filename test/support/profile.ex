@@ -1,4 +1,5 @@
 defmodule Profile do
+  @moduledoc false
   use Ecto.Schema
 
   schema "profiles" do
