@@ -5,6 +5,9 @@ defmodule EctoReflection.MixProject do
     [
       app: :ecto_reflection,
       version: "0.1.0",
+      description: "Ecto Utility functions for Introspection",
+      source_url: "https://github.com/mrmicahcooper/ecto_reflection",
+      name: "EctoReflection",
       elixir: "~> 1.11.1",
       start_permanent: Mix.env() == :prod,
       elixirc_paths: elixirc_paths(Mix.env()),
