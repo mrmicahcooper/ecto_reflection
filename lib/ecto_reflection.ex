@@ -204,8 +204,9 @@ defmodule EctoReflection do
   @doc """
   Return the type for a `Ecto.Schema`'s attribute
 
+  Accepts an atom or a binary for the attribute
   ```
-  iex> EctoReflection.type(User, "projects")
+  iex> EctoReflection.type(User, :projects)
   {:has_many, Project}
   ```
   """
@@ -215,15 +216,6 @@ defmodule EctoReflection do
     end
   end
 
-  @doc """
-  Return the type for a `Ecto.Schema`'s attribute
-
-  Accepts an atom or a binary for the attribute
-  ```
-  iex> EctoReflection.type(User, :projects)
-  {:has_many, Project}
-  ```
-  """
   def type(schema, key) when is_atom(key) do
     with(
       nil <- schema.__schema__(:type, key),
